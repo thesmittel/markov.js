@@ -1,17 +1,15 @@
 # Markov.js
 
-This is a slightly altered fork which changes how models are saved, resulting in a ~33% reduction in file size according to preliminary testing
+This is a slightly altered fork which changes how models are saved, resulting in a ~33% reduction in file size according to preliminary testing.
+
+This is in the early stages so expect some issues.
 
 markov.js is the node module. mkney.js is obsolete experimental stuff and does not work properly. 
 Markov.py is WIP, will be an intercompatible port of markov.js, as in data trained with one will be possible to read with the other. 
 main.js is a console implementation of image markov using markov.js. Its run from the commandline. Details [HERE](https://github.com/CallMeAtomfried/notmarkov/blob/main/README.md#image-markov)
 
 ### Installation:
-either via
-```
-npm install ooer-markov
-```
-or just by dragging the markov.js file where ever you need it. 
+This fork is not on NPM, so just put that file somewhere and call it via require(filepath)
 
 ## Node module
 
