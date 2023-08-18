@@ -1,5 +1,4 @@
-const nbt = require("nbt-js");
-const { Namespace } = require("socket.io");
+
 
 //PRIVATE METHODS TO PREVENT USER MESSING THINGS UP 
 function getRanges(word, words, contextsize) {
@@ -130,6 +129,52 @@ function processAndExtractMainGroup(buffer) {
     
   }
 }
+
+function parseModelWords(buffer) {
+  // header starts at byte 3;
+  const decoder = new TextDecoder();
+  let lastByte = -1;
+  let parsetarget = 29;
+  let index = 3;
+  let tempArr = [];
+  let dict = [];
+
+  while (lastByte != parsetarget) {
+    if (buffer[index] != 3 && buffer[index] != 2) tempArr.push(buffer[index]);
+    if (buffer[index] == 3) {
+      dict.push(decoder.decode(new Uint8Array(tempArr).buffer))
+      tempArr = [];
+    }
+
+    lastByte = buffer[index]
+    index++;
+  }
+  const mainpart = buffer.splice(buffer.indexOf(29) + 1);
+
+  buffer.shift();
+
+  let lastBytes = [-1,-1,-1];
+  const target = [0,0,0];
+
+  for (let b in buffer) {
+    lastBytes.push(buffer[b])
+    lastBytes.shift()
+    
+    
+    if (compareArrays(lastBytes, target)) {
+      // console.log("reached end of main", b);
+      buffer.splice(b + 1);
+      res = grabDatapointsWord(buffer)
+      return res;
+    }
+    
+  }
+
+  console.log(mainpart)
+  console.log(dict, buffer.indexOf(29))
+  console.log(index)
+}
+
 
 function grabDatapoints(buffer) {
   
@@ -284,10 +329,45 @@ module.exports = class Markov {
     let temp = []
     temp.push(1);
 
-    if (this.model.w.wordbased){
+    if (this.model.wordbased){
       // wordbased model
+      temp.push(15, 25) // Word based marker and start of header
+      // Word index
+      const rawwords = Object.keys(this.model.w) // Possibly sort by frequency, should be more space efficient
+      let tempWords = rawwords.map(a => a.split(" ")).flat() // splits all datapoint name into words
+      const words = Array.from(new Set(tempWords)); // removes duplicates for individual words
+      tempWords = null; // idk if that helps with memory, maybe it does, maybe it doesnt
+      const wordbytes = words.map(a => [2, ...encoder.encode(a), 3]).flat(); // generate list of words as utf-8 bytes with start and end markers
+      
+      temp.push(...wordbytes) // add to buffer
+      temp.push(29); // group marker
+      for (let index in rawwords) { // for all entries in the model
+        temp.push(2); // Word start marker
+
+        if (rawwords[index].match(/ /g)) { // Pushes indices of word(s) into the buffer
+          let dpName = rawwords[index].split(" ");
+          let dpIndices = dpName.map(a => words.indexOf(a))
+          temp.push(...dpIndices) // List of indices
+        } else {
+          temp.push(words.indexOf(rawwords[index])) // Index if data point is only one word
+        }
+        
+        temp.push(3); // Word end marker
+        temp.push(...intToByteArray(this.model.w[rawwords[index]].t)); // Total occurences
+        temp.push(0); // Separator
+        
+        for (let f in this.model.w[rawwords[index]].f) { // For all following
+          temp.push(2, words.indexOf(f), 3, ...intToByteArray(this.model.w[rawwords[index]].f[f]), 0)
+          // start of string, index into dictionary, end of string, number of occurences, end of item marker
+        }
+
+        temp.push(0) // end of datapoint
+      }
+      temp.push(0) // end of main section
+      temp.push(29, 4) // EoF
+      console.log("words", words)
     } else {
-      temp.push(14, 25, 29);
+      temp.push(14, 25, 29); // letter based model marker, start of head, start of group (synonymous with end of head in this case, header is reserved for dictionaries)
       for (let w in this.model.w) {
         temp.push(2) //start of string
         temp.push(...(encoder.encode(w))) // The string
@@ -295,7 +375,7 @@ module.exports = class Markov {
         temp.push(...intToByteArray(this.model.w[w].t)) // total number of occurences
         temp.push(0)
         for (let f in this.model.w[w].f) {
-          temp.push(2, f.charCodeAt(0), 3, ...intToByteArray(this.model.w[w].f[f]), 0)
+          temp.push(2, encoder.encode(f), 3, ...intToByteArray(this.model.w[w].f[f]), 0)
         }
         temp.push(0) // end of datapoint (double 0)
       }
@@ -322,15 +402,15 @@ module.exports = class Markov {
     this.reset();
 
     let temp = Array.from(this.fs.readFileSync(filepath));
-    console.log(`loaded ${temp.length} bytes`)
+    console.log(`Loaded ${temp.length} bytes`)
     this.model.wordbased = temp[1]==15;
 
 
 
     if (this.model.wordbased) {
-
+      this.model.w = parseModelWords(temp)
     } else {
-        this.model.w = processAndExtractMainGroup(temp.splice(temp.indexOf(29)));
+      this.model.w = processAndExtractMainGroup(temp.splice(temp.indexOf(29)));
     }
     console.log("Done!")
   }

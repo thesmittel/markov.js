@@ -1,0 +1,53 @@
+Specification
+
+WB:
+1   // Word based marker byte
+16  // start of header
+    2   // String start
+    [byte array] // utf encoded string
+    3   // String end
+    0   // Divider
+    (repeating for every word in order)
+0 
+17  // Start of metadata
+    20  // Description marker
+        2 // String start
+        [byte array] utf encoded Description
+        3 // String end
+    0
+    21  // License marker
+        2
+        [byte array] utf encoded license name
+        3
+    0
+    22  // Author name
+        2
+        [byte array] utf encoded author name
+        3
+    0
+    23  // Year
+        [short] year int
+    0
+0   // End of metadata
+18  // Start of main section
+    (
+        [byte] // length of byte array
+        [byte array] // Index of word
+    ) can repeat
+    0
+    [byte] // length of byte array
+    [byte array] // Total occurences;
+    
+    0
+    [byte] // length of byte array
+    [byte array] // Index of word
+    [byte] // length of byte array
+    [byte array] // Number of occurences
+    0   // Following separator
+    (repeating)
+
+
+    0   // End of following
+    (repeating)
+0   // End of main section
+4   // EoF

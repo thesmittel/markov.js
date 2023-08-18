@@ -1,5 +1,8 @@
 # Markov.js
 
+## IMPORTANT!
+The actual module is in the node_modules folder now. Refer to test.js for an example
+
 This is a slightly altered fork which changes how models are saved, resulting in a ~33% reduction in file size according to preliminary testing.
 
 This is in the early stages so expect some issues.
